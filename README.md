@@ -1,10 +1,8 @@
 smart_profile_mvp/
 
-├── data_visual/
+├── data_visualization.html   # 初始化数据可视化
 
-│   └── data_visualization.html   # 初始化数据可视化
-
-│   └── data_server.py          # 数据后端
+├── data_server.py          # 数据后端
 
 ├── templates/
 
