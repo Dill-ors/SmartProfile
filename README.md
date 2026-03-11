@@ -29,18 +29,27 @@ smart_profile_mvp/
 
 ## 1. 核心算法逻辑
 * **微观诊断 (DINA 模型)**：利用贝叶斯后验概率，结合 Q 矩阵与作答记录，反推学生在 5 个底层知识点上的掌握概率。对不符合知识图谱前置依赖的隐状态进行了先验概率的硬约束惩罚。
-* **宏观评估 (IRT 辅助)**：计算综合能力得分，实现学霸与学渣的快速分层。
+* **宏观评估 (IRT 辅助)**：在已知学生真实作答矩阵（观测值）的情况下，系统通过极大似然估计近似推导出连续的能力参数 $\theta_i$，并将其线性映射为 $0 \sim 100$ 的综合百分制得分，作为前端界面的“综合能力评分”。
 
 ## 2. 环境依赖
 * Python 3.9+
 * 推荐使用虚拟环境运行
+* 需要的包在requirements.txt
 
 ## 3. 极速运行指南
 
-**Step 1: 进入环境**
+**Step 1: 创建环境**
 ```bash
+#利用anaconda创建虚拟环境
+#打开Anaconda Prompt
+conda create -n myenv python=3.9
+
+# Windows 激活命令
+conda activate smartprofile_env
+
+#进入到项目文件夹
 cd /d 文件目录
-#如果安装了虚拟python环境需要激活conda activate 虚拟环境名称
+
 ```
 
 **Step 2: 安装依赖**
