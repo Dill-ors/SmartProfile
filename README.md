@@ -34,21 +34,27 @@ smart_profile_mvp/
 * **宏观评估 (IRT 辅助)**：计算综合能力得分，实现学霸与学渣的快速分层。
 
 ## 2. 环境依赖
-* Python 3.8+
+* Python 3.9+
 * 推荐使用虚拟环境运行
 
 ## 3. 极速运行指南 (3步启动)
 
-**Step 1: 安装依赖**
+**Step 1: 进入环境**
 ```bash
-pip install -r requirements.txt
+cd /d 文件目录
+#如果安装了虚拟python环境需要激活conda activate 虚拟环境名称
+```
+
+**Step 2: 安装依赖**
+```bash：
+pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 ```
  --- 
-**Step 2: 启动后端服务**
+**Step 3: 启动后端服务**
 ```bash
 uvicorn main:app --reload
 ```
  --- 
-**Step 3: 访问前端页面**
+**Step 4: 访问前端页面**
 打开浏览器，访问：http://127.0.0.1:8000 即可查看可视化认知雷达图与知识图谱。
 或者按住ctrl，点击出现的浏览器链接，会自动跳转
