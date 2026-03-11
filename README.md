@@ -62,5 +62,10 @@ uvicorn main:app --reload
 # 如果端口占用，指定端口（比如用 8080 端口）
 uvicorn main:app --reload --port 8080
 ```
-
+ --- 
+**Step 5: 核验数据**
+```bash
+python data_server.py
+```
+然后打开文件夹中的data_visualization.html文件，就可以看到初始化的数据，可以与算法的生成结果进行对比
 
