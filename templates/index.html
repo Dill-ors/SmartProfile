@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能学习诊断系统</title>
+    <!-- Vue3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #8892b0;
+            font-size: 1rem;
+        }
+        
+        .selector-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .selector-section label {
+            font-size: 1.1rem;
+            color: #ccd6f6;
+        }
+        
+        .selector-section select {
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 0.3s ease;
+        }
+        
+        .selector-section select:hover {
+            background: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .selector-section select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        
+        .student-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .student-badge {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #7b2cbf, #00d4ff);
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .panel-title {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #00d4ff, #7b2cbf);
+            border-radius: 2px;
+        }
+        
+        .chart-container {
+            height: 350px;
+        }
+        
+        .irt-score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .irt-score-label {
+            font-size: 1rem;
+            color: #ccd6f6;
+            margin-bottom: 10px;
+        }
+        
+        .irt-score-badge {
+            font-size: 2.5rem;
+            font-weight: bold;
+            padding: 15px 30px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .irt-score-badge.high {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        
+        .irt-score-badge.medium {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+        }
+        
+        .irt-score-badge.low {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+        }
+        
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .knowledge-map-panel {
+            flex: 1;
+        }
+        
+        .advice-panel {
+            flex: 1;
+        }
+        
+        .advice-content {
+            height: 280px;
+            overflow-y: auto;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+        
+        .advice-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .advice-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .advice-content::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 3px;
+        }
+        
+        .generate-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #7b2cbf, #00d4ff);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading-dots {
+            display: inline-block;
+        }
+        
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
+        }
+        
+        .source-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
+        .source-badge.llm {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .source-badge.mock {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .placeholder-text {
+            color: #8892b0;
+            text-align: center;
+            padding: 50px 20px;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: #8892b0;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <header class="header">
+                <h1>智能学习诊断系统</h1>
+                <p>基于DINA模型的认知诊断与AI个性化学习建议</p>
+            </header>
+            
+            <div class="selector-section">
+                <label for="student-select">选择学生：</label>
+                <select id="student-select" v-model="selectedStudentId" @change="onStudentChange">
+                    <option value="">请选择学生...</option>
+                    <option v-for="student in students" :key="student.student_id" :value="student.student_id">
+                        {{ student.student_id }} - {{ student.student_name }}
+                    </option>
+                </select>
+                <div class="student-info" v-if="currentDiagnosis">
+                    <span class="student-badge">{{ currentDiagnosis.student_name }}</span>
+                    <span style="color: #8892b0;">最可能模式后验概率: {{ (currentDiagnosis.pattern_posterior * 100).toFixed(1) }}%</span>
+                </div>
+            </div>
+            
+            <div class="main-content" v-if="currentDiagnosis">
+                <div class="panel">
+                    <div class="panel-title">认知雷达图</div>
+                    
+                    <!-- 综合能力评分 -->
+                    <div class="irt-score-container" v-if="currentDiagnosis.irt_score !== undefined">
+                        <div class="irt-score-label">综合能力评分</div>
+                        <div class="irt-score-badge" :class="getIrtScoreClass(currentDiagnosis.irt_score)">
+                            {{ currentDiagnosis.irt_score }} 分
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" id="radar-chart"></div>
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ averageMastery.toFixed(1) }}%</div>
+                            <div class="stat-label">平均掌握率</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ strongPointsCount }}</div>
+                            <div class="stat-label">优势知识点</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ weakPointsCount }}</div>
+                            <div class="stat-label">薄弱知识点</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="right-column">
+                    <div class="panel knowledge-map-panel">
+                        <div class="panel-title">知识掌握地图</div>
+                        <div class="chart-container" id="graph-chart"></div>
+                    </div>
+                    
+                    <div class="panel advice-panel">
+                        <div class="panel-title">
+                            AI学习建议
+                            <span v-if="adviceSource" :class="['source-badge', adviceSource]">
+                                {{ adviceSource === 'llm' ? 'AI生成' : '智能分析' }}
+                            </span>
+                        </div>
+                        <div class="advice-content" ref="adviceContent">
+                            <div v-if="!adviceText && !isLoadingAdvice" class="placeholder-text">
+                                点击下方按钮生成个性化学习建议
+                            </div>
+                            <div v-else>{{ adviceText }}<span v-if="isTyping" class="typing-cursor">|</span></div>
+                        </div>
+                        <button class="generate-btn" @click="generateAdvice" :disabled="isLoadingAdvice || !selectedStudentId">
+                            <span v-if="isLoadingAdvice">
+                                生成中<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+                            </span>
+                            <span v-else>生成个性化建议</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel" v-else style="text-align: center; padding: 100px 20px;">
+                <div class="placeholder-text">
+                    <p style="font-size: 1.2rem;">请从上方下拉框选择一位学生开始诊断</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch, nextTick, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const students = ref([]);
+                const selectedStudentId = ref('');
+                const currentDiagnosis = ref(null);
+                const adviceText = ref('');
+                const adviceSource = ref('');
+                const isLoadingAdvice = ref(false);
+                const isTyping = ref(false);
+                const adviceContent = ref(null);
+                
+                let radarChart = null;
+                let graphChart = null;
+                
+                const averageMastery = computed(() => {
+                    if (!currentDiagnosis.value) return 0;
+                    const values = Object.values(currentDiagnosis.value.knowledge_mastery);
+                    return (values.reduce((a, b) => a + b, 0) / values.length) * 100;
+                });
+                
+                const strongPointsCount = computed(() => {
+                    if (!currentDiagnosis.value) return 0;
+                    return Object.values(currentDiagnosis.value.knowledge_mastery)
+                        .filter(v => v >= 0.6).length;
+                });
+                
+                const weakPointsCount = computed(() => {
+                    if (!currentDiagnosis.value) return 0;
+                    return Object.values(currentDiagnosis.value.knowledge_mastery)
+                        .filter(v => v < 0.4).length;
+                });
+                
+                const fetchStudents = async () => {
+                    try {
+                        const response = await fetch('/api/students');
+                        students.value = await response.json();
+                    } catch (error) {
+                        console.error('获取学生列表失败:', error);
+                    }
+                };
+                
+                const fetchDiagnosis = async (studentId) => {
+                    try {
+                        const response = await fetch(`/api/diagnose/${studentId}`);
+                        currentDiagnosis.value = await response.json();
+                        adviceText.value = '';
+                        adviceSource.value = '';
+                        await nextTick();
+                        initCharts();
+                    } catch (error) {
+                        console.error('获取诊断结果失败:', error);
+                    }
+                };
+                
+                const onStudentChange = () => {
+                    if (selectedStudentId.value) {
+                        fetchDiagnosis(selectedStudentId.value);
+                    } else {
+                        currentDiagnosis.value = null;
+                    }
+                };
+                
+                const initCharts = () => {
+                    initRadarChart();
+                    initGraphChart();
+                };
+                
+                const initRadarChart = () => {
+                    const chartDom = document.getElementById('radar-chart');
+                    if (!chartDom) return;
+                    
+                    if (radarChart) {
+                        radarChart.dispose();
+                    }
+                    radarChart = echarts.init(chartDom);
+                    
+                    const diagnosis = currentDiagnosis.value;
+                    const concepts = ['K1', 'K2', 'K3', 'K4', 'K5'];
+                    const conceptNames = concepts.map(c => diagnosis.concept_names[c]);
+                    const values = concepts.map(c => (diagnosis.knowledge_mastery[c] * 100).toFixed(1));
+                    
+                    const option = {
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            trigger: 'item',
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            borderColor: '#00d4ff',
+                            textStyle: { color: '#fff' }
+                        },
+                        radar: {
+                            indicator: concepts.map((c, i) => ({
+                                name: `${c}\n${conceptNames[i]}`,
+                                max: 100
+                            })),
+                            shape: 'polygon',
+                            splitNumber: 5,
+                            axisName: {
+                                color: '#ccd6f6',
+                                fontSize: 12
+                            },
+                            splitLine: {
+                                lineStyle: { color: 'rgba(0, 212, 255, 0.2)' }
+                            },
+                            splitArea: {
+                                areaStyle: {
+                                    color: ['rgba(0, 212, 255, 0.05)', 'rgba(123, 44, 191, 0.05)']
+                                }
+                            },
+                            axisLine: {
+                                lineStyle: { color: 'rgba(0, 212, 255, 0.3)' }
+                            }
+                        },
+                        series: [{
+                            type: 'radar',
+                            data: [{
+                                value: values,
+                                name: '掌握概率',
+                                areaStyle: {
+                                    color: {
+                                        type: 'linear',
+                                        x: 0, y: 0, x2: 1, y2: 1,
+                                        colorStops: [
+                                            { offset: 0, color: 'rgba(0, 212, 255, 0.6)' },
+                                            { offset: 1, color: 'rgba(123, 44, 191, 0.6)' }
+                                        ]
+                                    }
+                                },
+                                lineStyle: {
+                                    color: '#00d4ff',
+                                    width: 2
+                                },
+                                itemStyle: {
+                                    color: '#00d4ff'
+                                }
+                            }]
+                        }]
+                    };
+                    
+                    radarChart.setOption(option);
+                };
+                
+                const initGraphChart = () => {
+                    const chartDom = document.getElementById('graph-chart');
+                    if (!chartDom) return;
+                    
+                    if (graphChart) {
+                        graphChart.dispose();
+                    }
+                    graphChart = echarts.init(chartDom);
+                    
+                    const diagnosis = currentDiagnosis.value;
+                    
+                    const getColorByMastery = (mastery) => {
+                        if (mastery >= 0.6) return '#10b981';
+                        if (mastery >= 0.4) return '#f59e0b';
+                        return '#ef4444';
+                    };
+                    
+                    const nodes = [
+                        { 
+                            name: 'K1', 
+                            x: 300, y: 175,
+                            symbolSize: 60, 
+                            category: 0,
+                            label: { show: true, fontSize: 14, position: 'top' },
+                            itemStyle: { color: getColorByMastery(diagnosis.knowledge_mastery['K1']) } 
+                        },
+                        { 
+                            name: 'K2', 
+                            x: 150, y: 100,
+                            symbolSize: 55, 
+                            category: 1,
+                            label: { show: true, fontSize: 14, position: 'top' },
+                            itemStyle: { color: getColorByMastery(diagnosis.knowledge_mastery['K2']) } 
+                        },
+                        { 
+                            name: 'K3', 
+                            x: 50, y: 50,
+                            symbolSize: 50, 
+                            category: 2,
+                            label: { show: true, fontSize: 14, position: 'top' },
+                            itemStyle: { color: getColorByMastery(diagnosis.knowledge_mastery['K3']) } 
+                        },
+                        { 
+                            name: 'K4', 
+                            x: 450, y: 100,
+                            symbolSize: 55, 
+                            category: 1,
+                            label: { show: true, fontSize: 14, position: 'top' },
+                            itemStyle: { color: getColorByMastery(diagnosis.knowledge_mastery['K4']) } 
+                        },
+                        { 
+                            name: 'K5', 
+                            x: 550, y: 50,
+                            symbolSize: 50, 
+                            category: 2,
+                            label: { show: true, fontSize: 14, position: 'top' },
+                            itemStyle: { color: getColorByMastery(diagnosis.knowledge_mastery['K5']) } 
+                        }
+                    ];
+                    
+                    const links = [
+                        { source: 'K1', target: 'K2' },
+                        { source: 'K2', target: 'K3' },
+                        { source: 'K1', target: 'K4' },
+                        { source: 'K4', target: 'K5' }
+                    ];
+                    
+                    const option = {
+                        backgroundColor: 'transparent',
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: (params) => {
+                                if (params.dataType === 'node') {
+                                    const kid = params.data.name;
+                                    const kname = diagnosis.concept_names[kid];
+                                    const mastery = (diagnosis.knowledge_mastery[kid] * 100).toFixed(1);
+                                    return `<strong>${kid} ${kname}</strong><br/>掌握概率: ${mastery}%`;
+                                }
+                                return '';
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            borderColor: '#00d4ff',
+                            textStyle: { color: '#fff' }
+                        },
+                        legend: {
+                            show: true,
+                            bottom: 5,
+                            textStyle: { color: '#8892b0' },
+                            data: [
+                                { name: '基础', itemStyle: { color: '#00d4ff' } },
+                                { name: '进阶', itemStyle: { color: '#7b2cbf' } },
+                                { name: '高级', itemStyle: { color: '#f59e0b' } }
+                            ]
+                        },
+                        series: [{
+                            type: 'graph',
+                            layout: 'none',
+                            roam: true,
+                            label: {
+                                show: true,
+                                position: 'top',
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                formatter: (params) => {
+                                    return params.name;
+                                }
+                            },
+                            edgeSymbol: ['none', 'arrow'],
+                            edgeSymbolSize: [0, 8],
+                            edgeLabel: {
+                                fontSize: 12
+                            },
+                            data: nodes,
+                            links: links,
+                            lineStyle: {
+                                opacity: 0.9,
+                                width: 2,
+                                curveness: 0,
+                                color: '#00d4ff'
+                            },
+                            categories: [
+                                { name: '基础', itemStyle: { color: '#00d4ff' } },
+                                { name: '进阶', itemStyle: { color: '#7b2cbf' } },
+                                { name: '高级', itemStyle: { color: '#f59e0b' } }
+                            ],
+                            emphasis: {
+                                focus: 'adjacency',
+                                lineStyle: { width: 4 }
+                            },
+                            itemStyle: {
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            }
+                        }],
+                        grid: {
+                            left: '5%',
+                            right: '5%',
+                            top: '10%',
+                            bottom: '15%'
+                        }
+                    };
+                    
+                    graphChart.setOption(option);
+                };
+                
+                const generateAdvice = async () => {
+                    if (!selectedStudentId.value || isLoadingAdvice.value) return;
+                    
+                    isLoadingAdvice.value = true;
+                    adviceText.value = '';
+                    adviceSource.value = '';
+                    
+                    try {
+                        const response = await fetch(`/api/advice/${selectedStudentId.value}`);
+                        const data = await response.json();
+                        
+                        adviceSource.value = data.source;
+                        await typeWriterEffect(data.advice);
+                    } catch (error) {
+                        console.error('获取学习建议失败:', error);
+                        adviceText.value = '获取学习建议失败，请稍后重试。';
+                    } finally {
+                        isLoadingAdvice.value = false;
+                    }
+                };
+                
+                const typeWriterEffect = async (text) => {
+                    isTyping.value = true;
+                    const chars = text.split('');
+                    for (let i = 0; i < chars.length; i++) {
+                        adviceText.value += chars[i];
+                        if (i % 2 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 20));
+                        }
+                        if (adviceContent.value) {
+                            adviceContent.value.scrollTop = adviceContent.value.scrollHeight;
+                        }
+                    }
+                    isTyping.value = false;
+                };
+                
+                const handleResize = () => {
+                    if (radarChart) radarChart.resize();
+                    if (graphChart) graphChart.resize();
+                };
+                
+                const getIrtScoreClass = (score) => {
+                    if (score >= 80) return 'high';
+                    if (score >= 60) return 'medium';
+                    return 'low';
+                };
+                
+                onMounted(() => {
+                    fetchStudents();
+                    window.addEventListener('resize', handleResize);
+                });
+                
+                return {
+                    students,
+                    selectedStudentId,
+                    currentDiagnosis,
+                    adviceText,
+                    adviceSource,
+                    isLoadingAdvice,
+                    isTyping,
+                    adviceContent,
+                    averageMastery,
+                    strongPointsCount,
+                    weakPointsCount,
+                    onStudentChange,
+                    generateAdvice,
+                    getIrtScoreClass
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

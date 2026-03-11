@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Profile 数据可视化</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入 Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .chart-container {
+            height: 450px;
+            width: 100%;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .tab-button:hover {
+            color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+        .tab-button.active {
+            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+        .update-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #2563eb;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .stat-card {
+            border-radius: 12px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="app" class="max-w-7xl mx-auto px-4 py-8">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">Smart Profile 数据可视化</h1>
+                    <p class="text-gray-600 mt-1">实时数据监控与分析平台</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center" @click="refreshData">
+                        <i class="fa fa-refresh mr-2"></i> 刷新数据
+                    </button>
+                    <div class="text-sm text-gray-500">
+                        最后更新: {{ lastUpdated }}
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card">
+                <div class="stat-value">{{ concepts.length }}</div>
+                <div class="stat-label">知识点总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ questions.length }}</div>
+                <div class="stat-label">题目总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ students.length }}</div>
+                <div class="stat-label">学生总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ responses.length }}</div>
+                <div class="stat-label">作答记录</div>
+            </div>
+        </div>
+        
+        <!-- 标签页导航 -->
+        <div class="flex border-b border-gray-200 mb-6 bg-white rounded-t-xl p-1">
+            <div class="tab-button active" @click="switchTab('knowledge')">
+                <i class="fa fa-sitemap mr-2"></i>知识点结构
+            </div>
+            <div class="tab-button" @click="switchTab('questions')">
+                <i class="fa fa-question-circle mr-2"></i>题目分析
+            </div>
+            <div class="tab-button" @click="switchTab('students')">
+                <i class="fa fa-users mr-2"></i>学生分析
+            </div>
+            <div class="tab-button" @click="switchTab('responses')">
+                <i class="fa fa-bar-chart mr-2"></i>作答情况
+            </div>
+        </div>
+        
+        <!-- 知识点结构 -->
+        <div class="tab-content active" id="knowledge">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">知识点依赖关系</h2>
+            <div class="card p-6 mb-6">
+                <div id="knowledgeGraph" class="chart-container"></div>
+            </div>
+            
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">知识点列表</h2>
+            <div class="card p-6">
+                <div class="table-container">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">知识点ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">知识点名称</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">前置依赖</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-for="concept in concepts" :key="concept.concept_id" class="hover:bg-gray-50 transition">
+                                <td class="py-4 px-4 whitespace-nowrap">{{ concept.concept_id }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">{{ concept.concept_name }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">{{ concept.prerequisite_id || '无' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 题目分析 -->
+        <div class="tab-content" id="questions">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">题目知识点分布</h2>
+            <div class="card p-6 mb-6">
+                <div id="questionDistribution" class="chart-container"></div>
+            </div>
+            
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">题目列表</h2>
+            <div class="card p-6">
+                <div class="table-container">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">知识点ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">关联题目</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-for="(questions, conceptId) in questionsByConcept" :key="conceptId" class="hover:bg-gray-50 transition">
+                                <td class="py-4 px-4 whitespace-nowrap font-medium">{{ conceptId }}</td>
+                                <td class="py-4 px-4">
+                                    <div class="flex flex-wrap gap-2">
+                                        <span v-for="question in questions" :key="question" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                            {{ question }}
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 学生分析 -->
+        <div class="tab-content" id="students">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">学生列表</h2>
+            <div class="card p-6">
+                <div class="table-container">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">学生ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">学生姓名</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">作答正确率</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-for="student in studentsWithStats" :key="student.student_id" class="hover:bg-gray-50 transition">
+                                <td class="py-4 px-4 whitespace-nowrap">{{ student.student_id }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">{{ student.student_name }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="w-24 bg-gray-200 rounded-full h-2.5">
+                                            <div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: student.accuracy + '%' }"></div>
+                                        </div>
+                                        <span class="ml-2 text-sm font-medium">{{ student.accuracy.toFixed(1) }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 作答情况 -->
+        <div class="tab-content" id="responses">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">学生作答统计</h2>
+            <div class="card p-6 mb-6">
+                <div id="responseStats" class="chart-container"></div>
+            </div>
+            
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">作答详情</h2>
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="relative">
+                        <input type="text" v-model="searchQuery" placeholder="搜索学生ID或题目ID" class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fa fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <div>
+                        <select v-model="filterResult" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">全部结果</option>
+                            <option value="correct">正确</option>
+                            <option value="incorrect">错误</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">学生ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">题目ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">作答结果</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-for="response in filteredResponses" :key="response.response_id" class="hover:bg-gray-50 transition">
+                                <td class="py-4 px-4 whitespace-nowrap">{{ response.student_id }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">{{ response.question_id }}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">
+                                    <span v-if="response.is_correct" class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">正确</span>
+                                    <span v-else class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">错误</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-if="filteredResponses.length === 0" class="text-center py-8 text-gray-500">
+                    没有找到匹配的作答记录
+                </div>
+            </div>
+        </div>
+        
+        <!-- 加载状态 -->
+        <div v-if="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-gray-700">数据加载中...</p>
+            </div>
+        </div>
+        
+        <!-- 更新通知 -->
+        <div v-if="showUpdateNotification" class="update-notification">
+            <i class="fa fa-check-circle mr-2"></i>
+            数据已更新
+        </div>
+    </div>
+    
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    activeTab: 'knowledge',
+                    concepts: [],
+                    questions: [],
+                    students: [],
+                    responses: [],
+                    questionsByConcept: {},
+                    knowledgeGraph: null,
+                    questionDistributionChart: null,
+                    responseStatsChart: null,
+                    loading: false,
+                    lastUpdated: '',
+                    showUpdateNotification: false,
+                    searchQuery: '',
+                    filterResult: 'all',
+                    fileWatcher: null
+                };
+            },
+            computed: {
+                studentsWithStats() {
+                    return this.students.map(student => {
+                        const studentResponses = this.responses.filter(r => r.student_id === student.student_id);
+                        if (studentResponses.length === 0) {
+                            return { ...student, accuracy: 0 };
+                        }
+                        const correctCount = studentResponses.filter(r => r.is_correct).length;
+                        const accuracy = (correctCount / studentResponses.length) * 100;
+                        return { ...student, accuracy };
+                    });
+                },
+                filteredResponses() {
+                    let filtered = this.responses;
+                    
+                    // 搜索过滤
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(response => 
+                            response.student_id.toLowerCase().includes(query) || 
+                            response.question_id.toLowerCase().includes(query)
+                        );
+                    }
+                    
+                    // 结果过滤
+                    if (this.filterResult === 'correct') {
+                        filtered = filtered.filter(response => response.is_correct);
+                    } else if (this.filterResult === 'incorrect') {
+                        filtered = filtered.filter(response => !response.is_correct);
+                    }
+                    
+                    return filtered;
+                }
+            },
+            mounted() {
+                this.loadData();
+                this.startFileWatcher();
+            },
+            beforeUnmount() {
+                if (this.fileWatcher) {
+                    clearInterval(this.fileWatcher);
+                }
+            },
+            methods: {
+                switchTab(tab) {
+                    this.activeTab = tab;
+                    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                    document.getElementById(tab).classList.add('active');
+                    document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+                    event.target.classList.add('active');
+                    
+                    // 延迟初始化或更新图表，确保DOM已经更新
+                    setTimeout(() => {
+                        if (tab === 'knowledge') {
+                            if (!this.knowledgeGraph) {
+                                this.initKnowledgeGraph();
+                            } else {
+                                this.updateKnowledgeGraph();
+                            }
+                        } else if (tab === 'questions') {
+                            if (!this.questionDistributionChart) {
+                                this.initQuestionDistributionChart();
+                            } else {
+                                this.updateQuestionDistributionChart();
+                            }
+                        } else if (tab === 'responses') {
+                            if (!this.responseStatsChart) {
+                                this.initResponseStatsChart();
+                            } else {
+                                this.updateResponseStatsChart();
+                            }
+                        }
+                    }, 100);
+                },
+                async loadData() {
+                    this.loading = true;
+                    try {
+                        // 从后端API获取真实数据
+                        const API_BASE = 'http://localhost:5000/api';
+                        
+                        // 并行获取所有数据
+                        const [conceptsRes, questionsRes, studentsRes, responsesRes] = await Promise.all([
+                            fetch(`${API_BASE}/concepts`),
+                            fetch(`${API_BASE}/questions`),
+                            fetch(`${API_BASE}/students`),
+                            fetch(`${API_BASE}/responses`)
+                        ]);
+                        
+                        // 解析数据
+                        this.concepts = await conceptsRes.json();
+                        this.questions = await questionsRes.json();
+                        this.students = await studentsRes.json();
+                        this.responses = await responsesRes.json();
+                        
+                        // 处理 prerequisite_id 为 null 的情况
+                        this.concepts.forEach(concept => {
+                            if (concept.prerequisite_id === null) {
+                                concept.prerequisite_id = '';
+                            }
+                        });
+                        
+                        // 按知识点分组题目
+                        this.questionsByConcept = {};
+                        for (let question of this.questions) {
+                            if (!this.questionsByConcept[question.concept_id]) {
+                                this.questionsByConcept[question.concept_id] = [];
+                            }
+                            this.questionsByConcept[question.concept_id].push(question.question_id);
+                        }
+                        
+                        // 更新时间
+                        this.lastUpdated = new Date().toLocaleString();
+                        
+                        // 初始化或更新图表
+                        this.initKnowledgeGraph();
+                        // 如果其他图表已经初始化，则更新数据
+                        if (this.questionDistributionChart) {
+                            this.updateQuestionDistributionChart();
+                        }
+                        if (this.responseStatsChart) {
+                            this.updateResponseStatsChart();
+                        }
+                        
+                        // 显示更新通知
+                        this.showUpdateNotification = true;
+                        setTimeout(() => {
+                            this.showUpdateNotification = false;
+                        }, 3000);
+                    } catch (error) {
+                        console.error('数据加载失败:', error);
+                        alert('数据加载失败，请确保后端服务已启动 (python data_server.py)');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                refreshData() {
+                    this.loadData();
+                },
+                startFileWatcher() {
+                    // 定期从后端API刷新数据（每5分钟刷新一次）
+                    this.fileWatcher = setInterval(() => {
+                        this.loadData();
+                    }, 300000); // 每5分钟（300000毫秒）刷新一次
+                },
+                initKnowledgeGraph() {
+                    const chartDom = document.getElementById('knowledgeGraph');
+                    if (!chartDom) return;
+                    
+                    this.knowledgeGraph = echarts.init(chartDom);
+                    
+                    const nodes = this.concepts.map(concept => ({
+                        id: concept.concept_id,
+                        name: `${concept.concept_id}: ${concept.concept_name}`,
+                        symbolSize: 60
+                    }));
+                    
+                    const links = this.concepts
+                        .filter(concept => concept.prerequisite_id)
+                        .map(concept => ({
+                            source: concept.prerequisite_id,
+                            target: concept.concept_id
+                        }));
+                    
+                    const option = {
+                        title: {
+                            text: '知识点依赖关系图',
+                            left: 'center',
+                            textStyle: {
+                                fontSize: 16,
+                                fontWeight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: function(params) {
+                                if (params.dataType === 'node') {
+                                    return params.data.name;
+                                } else {
+                                    return '依赖关系';
+                                }
+                            }
+                        },
+                        animationDurationUpdate: 1500,
+                        animationEasingUpdate: 'quinticInOut',
+                        series: [{
+                            type: 'graph',
+                            layout: 'none',
+                            symbolSize: 60,
+                            roam: true,
+                            label: {
+                                show: true,
+                                fontSize: 12,
+                                fontWeight: 'bold'
+                            },
+                            edgeSymbol: ['circle', 'arrow'],
+                            edgeSymbolSize: [4, 10],
+                            edgeLabel: {
+                                fontSize: 12
+                            },
+                            data: [
+                                { id: 'K1', name: 'K1: 基础代数', x: 300, y: 100, symbolSize: 60, itemStyle: { color: '#3b82f6' } },
+                                { id: 'K2', name: 'K2: 一元方程', x: 200, y: 250, symbolSize: 60, itemStyle: { color: '#10b981' } },
+                                { id: 'K3', name: 'K3: 函数概念', x: 100, y: 400, symbolSize: 60, itemStyle: { color: '#f59e0b' } },
+                                { id: 'K4', name: 'K4: 平面几何', x: 400, y: 250, symbolSize: 60, itemStyle: { color: '#8b5cf6' } },
+                                { id: 'K5', name: 'K5: 立体几何', x: 500, y: 400, symbolSize: 60, itemStyle: { color: '#ec4899' } }
+                            ],
+                            links: links,
+                            lineStyle: {
+                                opacity: 0.9,
+                                width: 2,
+                                curveness: 0.1,
+                                color: '#64748b'
+                            }
+                        }]
+                    };
+                    
+                    this.knowledgeGraph.setOption(option);
+                },
+                initQuestionDistributionChart() {
+                    const chartDom = document.getElementById('questionDistribution');
+                    if (!chartDom) return;
+                    
+                    this.questionDistributionChart = echarts.init(chartDom);
+                    
+                    const conceptCounts = {};
+                    for (let question of this.questions) {
+                        if (!conceptCounts[question.concept_id]) {
+                            conceptCounts[question.concept_id] = 0;
+                        }
+                        conceptCounts[question.concept_id]++;
+                    }
+                    
+                    const xAxisData = Object.keys(conceptCounts);
+                    const seriesData = Object.values(conceptCounts);
+                    
+                    const option = {
+                        title: {
+                            text: '各知识点题目数量分布',
+                            left: 'center',
+                            textStyle: {
+                                fontSize: 16,
+                                fontWeight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            },
+                            formatter: function(params) {
+                                return `${params[0].name}: ${params[0].value} 题`;
+                            }
+                        },
+                        grid: {
+                            left: '3%',
+                            right: '4%',
+                            bottom: '3%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: xAxisData,
+                            axisLabel: {
+                                interval: 0,
+                                fontSize: 12
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '题目数量',
+                            nameTextStyle: {
+                                fontSize: 12
+                            }
+                        },
+                        series: [{
+                            name: '题目数量',
+                            type: 'bar',
+                            data: seriesData,
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#3b82f6' },
+                                    { offset: 1, color: '#93c5fd' }
+                                ]),
+                                borderRadius: [4, 4, 0, 0]
+                            },
+                            emphasis: {
+                                itemStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: '#2563eb' },
+                                        { offset: 1, color: '#60a5fa' }
+                                    ])
+                                }
+                            }
+                        }]
+                    };
+                    
+                    this.questionDistributionChart.setOption(option);
+                },
+                initResponseStatsChart() {
+                    const chartDom = document.getElementById('responseStats');
+                    if (!chartDom) return;
+                    
+                    this.responseStatsChart = echarts.init(chartDom);
+                    
+                    // 计算每个学生的正确率
+                    const studentStats = {};
+                    for (let student of this.students) {
+                        studentStats[student.student_id] = {
+                            name: student.student_name,
+                            correct: 0,
+                            total: 0
+                        };
+                    }
+                    
+                    for (let response of this.responses) {
+                        studentStats[response.student_id].total++;
+                        if (response.is_correct) {
+                            studentStats[response.student_id].correct++;
+                        }
+                    }
+                    
+                    const xAxisData = Object.values(studentStats).map(stat => stat.name);
+                    const seriesData = Object.values(studentStats).map(stat => (
+                        (stat.correct / stat.total) * 100
+                    ));
+                    
+                    const option = {
+                        title: {
+                            text: '学生作答正确率',
+                            left: 'center',
+                            textStyle: {
+                                fontSize: 16,
+                                fontWeight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            },
+                            formatter: function(params) {
+                                return `${params[0].name}: ${params[0].value.toFixed(2)}%`;
+                            }
+                        },
+                        grid: {
+                            left: '3%',
+                            right: '4%',
+                            bottom: '15%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: xAxisData,
+                            axisLabel: {
+                                interval: 0,
+                                rotate: 45,
+                                fontSize: 11
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '正确率 (%)',
+                            max: 100,
+                            nameTextStyle: {
+                                fontSize: 12
+                            }
+                        },
+                        series: [{
+                            name: '正确率',
+                            type: 'bar',
+                            data: seriesData,
+                            itemStyle: {
+                                color: function(params) {
+                                    const value = params.value;
+                                    if (value >= 80) return '#10b981'; // 绿色
+                                    if (value >= 60) return '#f59e0b'; // 橙色
+                                    return '#ef4444'; // 红色
+                                },
+                                borderRadius: [4, 4, 0, 0]
+                            },
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }]
+                    };
+                    
+                    this.responseStatsChart.setOption(option);
+                },
+                updateKnowledgeGraph() {
+                    // 更新知识点图表数据
+                    if (!this.knowledgeGraph) return;
+                    
+                    const nodes = this.concepts.map(concept => ({
+                        id: concept.concept_id,
+                        name: `${concept.concept_id}: ${concept.concept_name}`,
+                        symbolSize: 60
+                    }));
+                    
+                    const links = this.concepts
+                        .filter(concept => concept.prerequisite_id)
+                        .map(concept => ({
+                            source: concept.prerequisite_id,
+                            target: concept.concept_id
+                        }));
+                    
+                    this.knowledgeGraph.setOption({
+                        series: [{
+                            data: nodes,
+                            links: links
+                        }]
+                    });
+                },
+                updateQuestionDistributionChart() {
+                    // 更新题目分布图表数据
+                    if (!this.questionDistributionChart) return;
+                    
+                    const conceptCounts = {};
+                    for (let question of this.questions) {
+                        if (!conceptCounts[question.concept_id]) {
+                            conceptCounts[question.concept_id] = 0;
+                        }
+                        conceptCounts[question.concept_id]++;
+                    }
+                    
+                    const xAxisData = Object.keys(conceptCounts);
+                    const seriesData = Object.values(conceptCounts);
+                    
+                    this.questionDistributionChart.setOption({
+                        xAxis: {
+                            data: xAxisData
+                        },
+                        series: [{
+                            data: seriesData
+                        }]
+                    });
+                },
+                updateResponseStatsChart() {
+                    // 更新作答统计图表数据
+                    if (!this.responseStatsChart) return;
+                    
+                    // 计算每个学生的正确率
+                    const studentStats = {};
+                    for (let student of this.students) {
+                        studentStats[student.student_id] = {
+                            name: student.student_name,
+                            correct: 0,
+                            total: 0
+                        };
+                    }
+                    
+                    for (let response of this.responses) {
+                        studentStats[response.student_id].total++;
+                        if (response.is_correct) {
+                            studentStats[response.student_id].correct++;
+                        }
+                    }
+                    
+                    const xAxisData = Object.values(studentStats).map(stat => stat.name);
+                    const seriesData = Object.values(studentStats).map(stat => (
+                        (stat.correct / stat.total) * 100
+                    ));
+                    
+                    this.responseStatsChart.setOption({
+                        xAxis: {
+                            data: xAxisData
+                        },
+                        series: [{
+                            data: seriesData
+                        }]
+                    });
+                }
+            }
+        }).mount('#app');
+        
+        // 响应式调整图表大小
+        window.addEventListener('resize', function() {
+            const app = document.getElementById('app').__vue_app__._instance.proxy;
+            if (app.knowledgeGraph) app.knowledgeGraph.resize();
+            if (app.questionDistributionChart) app.questionDistributionChart.resize();
+            if (app.responseStatsChart) app.responseStatsChart.resize();
+        });
+    </script>
+</body>
+</html>
