@@ -58,3 +58,9 @@ uvicorn main:app --reload
 **Step 4: 访问前端页面**
 打开浏览器，访问：http://127.0.0.1:8000 即可查看可视化认知雷达图与知识图谱。
 或者按住ctrl，点击出现的浏览器链接，会自动跳转
+```bash
+# 如果端口占用，指定端口（比如用 8080 端口）
+uvicorn main:app --reload --port 8080
+```
+
+
