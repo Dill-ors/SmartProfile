@@ -8,5 +8,3 @@ smart_profile_mvp/
 ├── requirements.txt        # 核心依赖包声明
 ├── .gitignore              # Git 忽略文件配置
 ├── README.md               # 核心说明与运行文档
-├── 核心Prompt记录文档.pdf    # 交付物1
-└── 开发过程思路说明.pdf      # 交付物2
